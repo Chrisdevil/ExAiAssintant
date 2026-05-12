@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./mvnw compile *)",
+      "Bash(cmd /c \"mvnw.cmd compile\")",
+      "Bash(java -version)",
+      "Bash(MAVEN_OPTS=\"-Duser.home=C:/Users/ExExEcut1on^!\" mvn compile -q)",
+      "Bash(mvn compile *)",
+      "Bash(mvn *)",
+      "Bash(JAVA_HOME=\"C:/Program Files/Java/jdk-17\" mvn compile)",
+      "Bash(JAVA_HOME=\"C:/Program Files/Java/jdk-17\" mvn *)",
+      "Bash(mysql *)",
+      "Read(//c/Program Files/**)",
+      "Read(//d//**)",
+      "Bash(where mysql *)",
+      "Bash(rm -f D:/IdeaProjects/ExAiAssistant/src/main/java/com/example/exaiassistant/service/DeepSeekService.java D:/IdeaProjects/ExAiAssistant/src/main/java/com/example/exaiassistant/config/MyBatisConfig.java D:/IdeaProjects/ExAiAssistant/src/main/java/com/example/exaiassistant/mapper/ConversationMapper.java D:/IdeaProjects/ExAiAssistant/src/main/java/com/example/exaiassistant/mapper/MessageMapper.java D:/IdeaProjects/ExAiAssistant/src/main/java/com/example/exaiassistant/model/Conversation.java D:/IdeaProjects/ExAiAssistant/src/main/java/com/example/exaiassistant/model/Message.java D:/IdeaProjects/ExAiAssistant/src/main/resources/schema.sql)",
+      "Bash(rmdir D:/IdeaProjects/ExAiAssistant/src/main/java/com/example/exaiassistant/mapper D:/IdeaProjects/ExAiAssistant/src/main/java/com/example/exaiassistant/model)",
+      "Bash(where claude *)",
+      "Bash(claude --version)",
+      "Bash(where claude.cmd)",
+      "Bash(claude project *)",
+      "Bash(pip install *)",
+      "Bash(optimum-cli export *)"
+    ]
+  }
+}
