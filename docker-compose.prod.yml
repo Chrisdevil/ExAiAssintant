@@ -1,0 +1,38 @@
+version: '3.8'
+
+# 生产部署用 —— 拉取预构建镜像，不本地 build
+# 配合 GitHub Actions: push 代码 → 自动构建镜像 → 服务器 pull 重启
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-root}
+      MYSQL_DATABASE: exai
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: unless-stopped
+
+  app:
+    image: ghcr.io/${GITHUB_REPO:-your-username/exaiassistant}:latest
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/exai?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-root}
+      CLAUDE_BIN: claude
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-https://api.deepseek.com}
+    depends_on:
+      - db
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - claude_config:/root/.claude
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  claude_config:
