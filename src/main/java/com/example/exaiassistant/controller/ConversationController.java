@@ -48,11 +48,10 @@ public class ConversationController {
     public Flux<String> sendMessage(@PathVariable String id, @Valid @RequestBody MessageRequest request) {
         String sessionDir = conversationService.getSessionDir(id);
 
-        boolean isFirst = conversationService.isFirstMessage(id);
-        if (isFirst) {
-            conversationService.injectMemories(id, request.getContent());
-        }
+        // Re-inject latest memories on every message so context stays fresh
+        conversationService.injectMemories(id, request.getContent());
 
+        boolean isFirst = conversationService.isFirstMessage(id);
         Flux<String> stream = isFirst
                 ? claudeProcessService.startSession(id, sessionDir, request.getContent())
                 : claudeProcessService.resumeSession(id, sessionDir, request.getContent());

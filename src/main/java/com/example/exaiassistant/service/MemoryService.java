@@ -16,7 +16,7 @@ import java.util.*;
 public class MemoryService {
 
     private static final Logger log = LoggerFactory.getLogger(MemoryService.class);
-    private static final double SIMILARITY_THRESHOLD = 0.75;
+    private static final double SIMILARITY_THRESHOLD = 0.5;
     private static final double DUPLICATE_THRESHOLD = 0.92;
 
     private final MemoryMapper memoryMapper;
@@ -30,15 +30,13 @@ public class MemoryService {
 
     @Transactional
     public void saveMemory(String content, String conversationId) {
-        log.info("saveMemory called: {} (embedding ready={})", content, embeddingService.isReady());
         if (!embeddingService.isReady()) return;
 
         List<Memory> existing = memoryMapper.selectAll();
-        log.info("Existing memories count: {}", existing.size());
 
         float[] newEmb = embeddingService.embed(content);
         if (newEmb.length == 0) {
-            log.warn("Embedding returned empty for: {}", content);
+            log.warn("Memory embedding failed for: {}", content);
             return;
         }
 
@@ -47,7 +45,7 @@ public class MemoryService {
             if (emb.length > 0) {
                 double sim = cosineSimilarity(newEmb, emb);
                 if (sim > DUPLICATE_THRESHOLD) {
-                    log.info("Skipping duplicate memory (sim={}): {}", sim, content);
+                    log.debug("Skipping duplicate memory (sim={})", sim);
                     return;
                 }
             }
@@ -59,7 +57,7 @@ public class MemoryService {
         mem.setConversationId(conversationId);
         mem.setCreatedAt(LocalDateTime.now());
         memoryMapper.insert(mem);
-        log.info("Saved memory: {}", content);
+        log.info("Memory saved: {}", content);
     }
 
     public List<String> searchSimilar(String query, int topK) {

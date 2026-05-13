@@ -50,10 +50,9 @@ public class ConversationService {
     }
 
     public void injectMemories(String conversationId, String firstMessage) {
-        log.info("Injecting memories for conversation {}, query: {}", conversationId, firstMessage);
         List<String> memories = memoryService.searchSimilar(firstMessage, 5);
         if (memories.isEmpty()) {
-            log.info("No relevant memories found for: {}", firstMessage);
+            log.debug("No memories found for: {}", firstMessage);
             return;
         }
 
@@ -99,7 +98,9 @@ public class ConversationService {
                 }
 
                 String extractPrompt = "请从以下对话片段中提取1-3条关键信息，用于将来的记忆召回。" +
-                        "每条信息用一句话概括（不超过40字），以JSON数组格式返回。\n" +
+                        "每条信息用一句话概括（不超过40字）。\n" +
+                        "注意：返回纯JSON字符串数组，每个元素是字符串，不是对象。\n" +
+                        "示例格式：[\"信息1\", \"信息2\"]\n" +
                         "只返回JSON数组，不要其他文字。\n\n" + partialConv;
 
                 String sessionDir = dataDir + "/sessions/" + conversationId;
@@ -120,11 +121,6 @@ public class ConversationService {
                 p.waitFor();
                 p.destroy();
 
-                log.info("Memory extract convText ({} chars, first 300): {}",
-                        partialConv.length(),
-                        partialConv.length() > 300 ? partialConv.substring(0, 300) : partialConv);
-                log.info("Memory extract raw output (first 400): {}",
-                        output.substring(0, Math.min(400, output.length())));
 
                 // --output-format json wraps output in a result object
                 JsonNode wrapper = objectMapper.readTree(output);
@@ -148,7 +144,10 @@ public class ConversationService {
                 JsonNode arr = objectMapper.readTree(jsonStr);
                 if (arr.isArray()) {
                     for (JsonNode item : arr) {
-                        memoryService.saveMemory(item.asText(), conversationId);
+                        String text = extractMemoryText(item);
+                        if (!text.isBlank()) {
+                            memoryService.saveMemory(text, conversationId);
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -166,12 +165,26 @@ public class ConversationService {
     }
 
     private String jsonlPath(String conversationId) {
+        String needle = "/" + conversationId + ".jsonl";
+        File projectsDir = new File(claudeProjectsDir);
+        File[] dirs = projectsDir.listFiles(File::isDirectory);
+        if (dirs != null) {
+            for (File dir : dirs) {
+                File f = new File(dir, conversationId + ".jsonl");
+                if (f.exists()) return f.getPath();
+            }
+        }
+        // Fallback: construct path for current OS
         try {
-            String sessionDir = dataDir + "/sessions/" + conversationId;
-            String normalized = new File(sessionDir).getCanonicalPath();
-            String projectName = normalized
-                    .replace(":\\", "--")
-                    .replace("\\", "-");
+            String normalized = new File(dataDir + "/sessions/" + conversationId).getCanonicalPath();
+            String sep = File.separator;
+            String projectName;
+            if ("\\".equals(sep)) {
+                projectName = normalized.replace(":\\", "--").replace("\\", "-");
+            } else {
+                projectName = normalized.replace("/", "-");
+                if (projectName.startsWith("-")) projectName = projectName.substring(1);
+            }
             return claudeProjectsDir + "/" + projectName + "/" + conversationId + ".jsonl";
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -225,7 +238,7 @@ public class ConversationService {
         String path = jsonlPath(id);
         File jsonlFile = new File(path);
         if (!jsonlFile.exists()) {
-            log.warn("readJsonl: file not found: {}", path);
+            log.warn("JSONL not found for session {}", id);
             return new JsonlData();
         }
 
@@ -233,7 +246,6 @@ public class ConversationService {
         result.createdAt = fileToTime(jsonlFile);
         result.updatedAt = fileToTime(jsonlFile);
         long msgSeq = 1;
-        log.info("readJsonl: {}, size={} bytes", path, jsonlFile.length());
 
         try (BufferedReader reader = new BufferedReader(new FileReader(jsonlFile))) {
             String line;
@@ -292,6 +304,13 @@ public class ConversationService {
     private LocalDateTime fileToTime(File f) {
         return LocalDateTime.ofInstant(
                 Instant.ofEpochMilli(f.lastModified()), ZoneId.systemDefault());
+    }
+
+    private String extractMemoryText(JsonNode item) {
+        if (item.isTextual()) return item.asText();
+        if (item.has("info")) return item.get("info").asText();
+        if (item.has("text")) return item.get("text").asText();
+        return item.asText();
     }
 
     private LocalDateTime dirToTime(File dir) {
